@@ -847,7 +847,7 @@ Use this only if the app is not working correctly. This cannot be undone.`}
             Built with Vite, React, TypeScript, and Tailwind CSS
           </p>
           <p>
-            Source code <a href="https://github.com/mitotic/skylimit-alpha#readme" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">on Github</a>
+            Source code <a href="https://github.com/mitotic/skylimit#readme" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">on Github</a>
           </p>
         </div>
       </div>

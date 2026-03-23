@@ -7,7 +7,7 @@ This guide covers deployment of Skylimit and setup of the Skyspeed test server f
 
 ### GitHub Pages (Primary)
 
-Skylimit is deployed to [skylimit.dev](https://skylimit.dev) via the [skylimit-alpha](https://github.com/mitotic/skylimit-alpha) GitHub repository using GitHub Pages with a custom domain.
+Skylimit is deployed to [skylimit.dev](https://skylimit.dev) via the [skylimit](https://github.com/mitotic/skylimit) GitHub repository using GitHub Pages with a custom domain.
 
 The deployment workflow:
 
@@ -15,12 +15,12 @@ The deployment workflow:
 2. Run the copy script (with user confirmation):
    ```bash
    cd Websky
-   ./copy-to-skylimit-alpha.sh
+   ./copy-to-skylimit.sh
    ```
-   This copies all source files to `skylimit-alpha/`, excluding `.git`, root-level `.md` files, `node_modules`, `dist`, credentials, and the `.claude` directory. The `docs/` directory *is* copied.
-3. In the `skylimit-alpha` directory:
+   This copies all source files to `skylimit/`, excluding `.git`, root-level `.md` files, `node_modules`, `dist`, credentials, and the `.claude` directory. The `docs/` directory *is* copied.
+3. In the `skylimit` directory:
    ```bash
-   cd ../skylimit-alpha
+   cd ../skylimit
    npm install
    npm run build
    ```

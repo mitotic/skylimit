@@ -2,7 +2,7 @@
 
 R. Saravanan ([@sarava.net](https://bsky.app/profile/sarava.net) on Bluesky)
 
-*The code implementing this protocol can be found primarily in these two files on Github: [skylimitStats.ts](https://github.com/mitotic/skylimit-alpha/blob/main/src/curation/skylimitStats.ts), [skylimitFilter.ts](https://github.com/mitotic/skylimit-alpha/blob/main/src/curation/skylimitFilter.ts)*
+*The code implementing this protocol can be found primarily in these two files on Github: [skylimitStats.ts](https://github.com/mitotic/skylimit/blob/main/src/curation/skylimitStats.ts), [skylimitFilter.ts](https://github.com/mitotic/skylimit/blob/main/src/curation/skylimitFilter.ts)*
 
 The Skylimit protocol probabilistically selects a subset of posts from a user's followees to display in the timeline. To do that, Skylimit saves metadata for posts over an averaging period (default: 30 days) to compute the posting statistics for each followee. The user specifies the average number of total posts that they wish to view per day, V. We need to compute the *default Skylimit Number* M<sub>def</sub>, which is the maximum number of views allowed per followee.
 

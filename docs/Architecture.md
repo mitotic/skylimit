@@ -267,7 +267,7 @@ npm run lint     # ESLint
 
 ### Deployment
 
-Production builds output to `dist/`. The `copy-to-skylimit-alpha.sh` script copies non-development files to the `skylimit-alpha` repository for deployment to [skylimit.dev](https://skylimit.dev) via GitHub Pages.
+Production builds output to `dist/`. The `copy-to-skylimit.sh` script copies non-development files to the `skylimit` repository for deployment to [skylimit.dev](https://skylimit.dev) via GitHub Pages.
 
 ### Test Server Connection
 

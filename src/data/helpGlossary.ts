@@ -47,7 +47,7 @@ export const helpGlossary: Record<string, string> = {
     '# HEAD\n@*: #BreakingNews\n@insightful.quietposter.always.show\n\n## Workplace - common section for all editions\n@coworker1\n@coworker2\n\n# 08:00 Morning Edition\n@always.interesting.bsky.social\n@sometimes.interesting: topic, second topic\n\n## Substacks in the morning\n@author1.com: blogname1.substack.com \n@author2.bsky.social: blogname2.substack.com \n\n# 12:00 Noon Edition\n## Humor\n@xkcd.com\n@phdcomics.com\n\n# 18:00 Evening Edition\n## Coding\n@simonwillison.net\n\n# TAIL\n## Catchall common section\n@author1.com',
 
   'about':
-    'SkyLimit is a curating Bluesky client implemented as an installable web app. Use it to limit the posts viewed per day and create newspaper-like editions of curated posts.\n\nFollow @skylimit.dev to receive updates about the app.\n\nSkylimit is open-source: https://github.com/mitotic/skylimit-alpha#readme',
+    'SkyLimit is a curating Bluesky client implemented as an installable web app. Use it to limit the posts viewed per day and create newspaper-like editions of curated posts.\n\nFollow @skylimit.dev to receive updates about the app.\n\nSkylimit is open-source: https://github.com/mitotic/skylimit#readme',
 }
 
 /**

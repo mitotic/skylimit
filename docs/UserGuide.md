@@ -14,7 +14,7 @@ Version 0.1
 - [Skylimit Curation](#skylimit-curation)
 - [Caveats](#caveats)
 
-Skylimit is a working *proof-of-concept* software that implements a curation algorithm for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed. The [README](https://github.com/mitotic/skylimit-alpha#readme) provides background on the motivations behind Skylimit. The [protocol document](SkylimitProtocol.md) describes the algorithm in detail.
+Skylimit is a working *proof-of-concept* software that implements a curation algorithm for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed. The [README](https://github.com/mitotic/skylimit#readme) provides background on the motivations behind Skylimit. The [protocol document](SkylimitProtocol.md) describes the algorithm in detail.
 
 
 ## Getting Started
