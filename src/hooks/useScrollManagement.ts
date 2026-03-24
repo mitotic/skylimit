@@ -60,6 +60,13 @@ export function useScrollManagement({
       return // Wait for feed to load
     }
 
+    // Editions tab manages its own scroll restoration in EditionView
+    if (activeTab === 'editions') {
+      scrollRestoredRef.current = true
+      scrollSaveBlockedRef.current = false
+      return
+    }
+
     // Check if feed state was restored (not initial load) - use current tab's key
     const savedStateJson = sessionStorage.getItem(getFeedStateKey(activeTab))
     if (!savedStateJson && activeTab === 'curated') {

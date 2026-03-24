@@ -13,7 +13,7 @@ import { AppBskyFeedDefs } from '@atproto/api'
 import type { BskyAgent } from '@atproto/api'
 import { CurationFeedViewPost, EditionRegistryEntry, FeedCacheEntry, PostSummary } from './types'
 import { getPostSummariesInRange } from './skylimitCache'
-import { getEditorHandle, getEditorUser, editorUserToProfileView, getParsedEditions, editionLetter, HEAD_EDITION_NUMBER, TAIL_EDITION_NUMBER } from './skylimitEditions'
+import { getEditorHandle, getEditorUser, editorUserToProfileView, getParsedEditions, editionLetter, HEAD_EDITION_NUMBER, TAIL_EDITION_NUMBER, getEditionLayoutVersion } from './skylimitEditions'
 import { clientNow } from '../utils/clientClock'
 import { getSettings } from './skylimitStore'
 import { getEditionRegistry } from './editionRegistry'
@@ -282,6 +282,24 @@ export function getEditionList(): EditionRegistryEntry[] {
 }
 
 /**
+ * Build a reason object from a PostSummary for edition reconstruction.
+ * Uses the editor user registry when available, with avatarUrl from the summary
+ * for newer summaries that have it. Falls back gracefully for older summaries.
+ */
+function buildReasonFromSummary(summary: PostSummary) {
+  const editorUser = getEditorUser(summary.username)
+  const by = editorUser
+    ? { ...editorUserToProfileView(editorUser), avatar: summary.avatarUrl }
+    : { did: summary.accountDid, handle: summary.username, displayName: summary.username, avatar: summary.avatarUrl }
+  return {
+    $type: 'app.bsky.feed.defs#reasonRepost',
+    by,
+    indexedAt: summary.timestamp.toISOString(),
+    uri: summary.uniqueId,
+  }
+}
+
+/**
  * Load content for a single edition on demand.
  *
  * Queries PostSummaries within the registry entry's timestamp range,
@@ -341,9 +359,21 @@ export async function getEditionContent(registryEntry: EditionRegistryEntry, age
   const editionTime = registryEntry.editionKey.split('_').slice(1).join('_')
   const editionMeta = editionsByTime.get(editionTime)
 
+  // Check if layout version matches the one used when this edition was assembled
+  const currentLayoutVersion = getEditionLayoutVersion()
+  const storedLayoutVersion = syntheticSummaries[0]?.edition_layout_version
+  const layoutVersionMatch = storedLayoutVersion !== undefined && storedLayoutVersion === currentLayoutVersion
+
   // Section name resolution using composite groupKey
+  // (fallback from displayName is populated later, after syntheticPostMap is built)
+  let fallbackSectionNames: Map<string, string> | null = null
+
   function getSectionName(groupKey: string): string {
     if (groupKey === '0') return ''  // combined default
+    // Use displayName fallback when layout version mismatches
+    if (fallbackSectionNames) {
+      return fallbackSectionNames.get(groupKey) ?? `Section ${groupKey}`
+    }
     if (groupKey.startsWith('head_')) {
       const code = groupKey.substring(5)
       const section = editionAMeta?.sections.find(s => s.code === code)
@@ -429,6 +459,24 @@ export async function getEditionContent(registryEntry: EditionRegistryEntry, age
     ))
   }
 
+  // Build fallback section names from editor displayName when layout version mismatches
+  if (!layoutVersionMatch) {
+    fallbackSectionNames = new Map()
+    for (const [groupKey, summaries] of sectionMap) {
+      if (groupKey === '0') continue  // default section has no name
+      const firstSummary = summaries[0]
+      const syntheticPost = syntheticPostMap.get(firstSummary.uniqueId)
+      if (syntheticPost?.reason) {
+        const displayName = (syntheticPost.reason as any).by?.displayName || ''
+        const colonIdx = displayName.indexOf(': ')
+        if (colonIdx >= 0) {
+          fallbackSectionNames.set(groupKey, displayName.substring(colonIdx + 2))
+        }
+        // No colon means default section — no name needed
+      }
+    }
+  }
+
   // Step 5: Build sections
   const sections: EditionDisplaySection[] = []
 
@@ -491,6 +539,20 @@ export async function getEditionContent(registryEntry: EditionRegistryEntry, age
           syntheticPost.curation.edition_summary_id = summary.uniqueId
         }
         posts.push(syntheticPost)
+      } else if (originalPost) {
+        // Reconstruct from PostSummary + server-fetched original when feed_cache is evicted
+        const editionPost: CurationFeedViewPost = {
+          post: originalPost,
+          reason: buildReasonFromSummary(summary),
+          curation: {
+            curation_status: 'edition_publish_show',
+            edition_status: 'synthetic',
+            edition_summary_id: summary.uniqueId,
+            curationNumber: summary.curationNumber ?? undefined,
+            matching_pattern: summary.matching_pattern,
+          },
+        }
+        posts.push(editionPost)
       }
     }
 

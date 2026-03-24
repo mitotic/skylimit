@@ -7,6 +7,7 @@ import { isRateLimited, getTimeUntilClear } from '../utils/rateLimitState'
 import { getNonStandardServerName } from '../api/atproto-client'
 import { resetEverything } from '../curation/skylimitCache'
 import { getSetting } from '../curation/skylimitStore'
+import { prefetchNotifications, shouldReprefetchNotifications, invalidateNotificationsCache } from '../prefetch/prefetchCache'
 import log from '../utils/logger'
 import ConfirmModal from './ConfirmModal'
 import BugReportModal from './BugReportModal'
@@ -27,6 +28,9 @@ export default function Navigation() {
 
   const [clickToBlueSky, setClickToBlueSky] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
+  const prevUnreadCountRef = useRef<number>(0)
+  const prefetchTriggeredRef = useRef(false)
+  const prefetchEnabledRef = useRef(true)
 
   // Check if a nav item is active - compare pathname only (ignore query params)
   const isActive = (path: string) => {
@@ -56,6 +60,27 @@ export default function Navigation() {
         ])
         setUnreadCount(count)
         setUnreadChatCount(chatCount)
+
+        // Prefetch notifications in background
+        if (prefetchEnabledRef.current && agent) {
+          if (!prefetchTriggeredRef.current) {
+            // First successful fetch — trigger initial prefetch with delay
+            prefetchTriggeredRef.current = true
+            clientTimeout(() => {
+              if (prefetchEnabledRef.current) {
+                prefetchNotifications(agent)
+              }
+            }, 500)
+          } else if (count > prevUnreadCountRef.current) {
+            // Unread count increased — new notifications arrived
+            if (shouldReprefetchNotifications()) {
+              prefetchNotifications(agent)
+            } else {
+              invalidateNotificationsCache()
+            }
+          }
+        }
+        prevUnreadCountRef.current = count
       } catch (error) {
         log.warn('Navigation', 'Failed to fetch unread count:', error)
         // Don't show error to user, just silently fail
@@ -89,7 +114,11 @@ export default function Navigation() {
       setUnreadChatCount(0)
     }
 
-    return () => clearClientInterval(intervalRef.current)
+    return () => {
+      clearClientInterval(intervalRef.current)
+      prefetchTriggeredRef.current = false
+      prevUnreadCountRef.current = 0
+    }
   }, [agent, session, location.pathname])
 
   // Load click to Bluesky setting from localStorage
@@ -97,9 +126,12 @@ export default function Navigation() {
     setClickToBlueSky(localStorage.getItem('websky_click_to_bluesky') === 'true')
   }, [location.pathname]) // Reload on navigation to pick up settings changes
 
-  // Load debug mode setting from IndexedDB
+  // Load debug mode and prefetch settings from IndexedDB
   useEffect(() => {
     getSetting('debugMode').then(v => setDebugMode(!!v))
+    getSetting('prefetchNotifications').then(v => {
+      prefetchEnabledRef.current = v !== false // default true
+    })
   }, [location.pathname])
 
   // Close debug menu on click outside

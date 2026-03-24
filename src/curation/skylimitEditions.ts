@@ -71,6 +71,21 @@ export interface ParsedEditions {
   errors: string[]
 }
 
+// --- Edition Layout Version ---
+
+const EDITION_LAYOUT_VERSION_KEY = 'skylimit_edition_layout_version'
+
+export function getEditionLayoutVersion(): number {
+  const raw = localStorage.getItem(EDITION_LAYOUT_VERSION_KEY)
+  return raw ? parseInt(raw, 10) || 0 : 0
+}
+
+export function incrementEditionLayoutVersion(): number {
+  const next = getEditionLayoutVersion() + 1
+  localStorage.setItem(EDITION_LAYOUT_VERSION_KEY, String(next))
+  return next
+}
+
 // --- Editor User Registry ---
 
 const editorUserRegistry = new Map<string, EditorUser>()
@@ -928,6 +943,7 @@ export async function saveEditionLayout(
 
   if (!trimmed) {
     await updateSettings({ editionLayout: '' })
+    incrementEditionLayoutVersion()
     invalidateEditionsCache()
     const rematchResult = await rematchHeldPosts()
     return { success: true, errors: [], editionCount: 0, patternCount: 0, rematchResult }
@@ -944,6 +960,7 @@ export async function saveEditionLayout(
   )
 
   await updateSettings({ editionLayout: trimmed })
+  incrementEditionLayoutVersion()
   invalidateEditionsCache()
   const rematchResult = await rematchHeldPosts()
 

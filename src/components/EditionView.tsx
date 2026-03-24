@@ -66,8 +66,16 @@ export default function EditionView({
   const navigate = useNavigate()
   const [registryEntries, setRegistryEntries] = useState<EditionRegistryEntry[]>([])
   const [currentEdition, setCurrentEdition] = useState<EditionDisplayData | null>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const saved = sessionStorage.getItem(EDITION_INDEX_KEY)
+    if (saved !== null) {
+      const idx = parseInt(saved, 10)
+      if (!isNaN(idx) && idx >= 0) return idx
+    }
+    return 0
+  })
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+  const [allSectionsCollapsed, setAllSectionsCollapsed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editionLoading, setEditionLoading] = useState(false)
   const [hasLayout, setHasLayout] = useState(true)
@@ -303,16 +311,19 @@ export default function EditionView({
 
   const goToPrev = useCallback(() => {
     sessionStorage.removeItem(EDITION_SCROLL_KEY)
+    setCollapsedSections(new Set())
     setCurrentIndex(i => Math.min(i + 1, registryEntries.length - 1))
   }, [registryEntries.length])
 
   const goToNext = useCallback(() => {
     sessionStorage.removeItem(EDITION_SCROLL_KEY)
+    setCollapsedSections(new Set())
     setCurrentIndex(i => Math.max(i - 1, 0))
   }, [])
 
   const goToEdition = useCallback((index: number) => {
     sessionStorage.removeItem(EDITION_SCROLL_KEY)
+    setCollapsedSections(new Set())
     setCurrentIndex(index)
     setShowEditionList(false)
   }, [])
@@ -457,6 +468,11 @@ export default function EditionView({
 
   const defaultSection = edition.sections.find(s => s.code === '0')
   const namedSections = edition.sections.filter(s => s.code !== '0')
+  // Derive effective collapsed state: if user navigated (collapsedSections reset to empty),
+  // apply the global allSectionsCollapsed intent; otherwise use per-section toggles
+  const effectiveCollapsed = collapsedSections.size > 0
+    ? collapsedSections
+    : (allSectionsCollapsed ? new Set(namedSections.map(s => s.code)) : new Set<string>())
   const hasPrev = currentIndex < registryEntries.length - 1  // older editions
   const hasNext = currentIndex > 0                            // newer editions
   const prevUnviewed = hasPrev && !registryEntries[currentIndex + 1]?.viewedAt
@@ -495,12 +511,6 @@ export default function EditionView({
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
               </button>
             </div>
-            <div className={`text-base text-gray-500 dark:text-gray-400 ${editionFont === 'sans-serif' ? 'font-newspaper-sans' : 'font-serif'}`}>
-              {edition.editionDate.toLocaleString(undefined, {
-                hour: 'numeric', minute: '2-digit',
-                month: 'long', day: 'numeric', year: 'numeric',
-              })}
-            </div>
           </div>
 
           {/* Edition list popup */}
@@ -519,8 +529,11 @@ export default function EditionView({
                     ? titleRef.current.getBoundingClientRect().bottom + 4
                     : 60,
                   left: titleRef.current
-                    ? Math.max(8, titleRef.current.getBoundingClientRect().left +
-                        titleRef.current.getBoundingClientRect().width / 2 - 160)
+                    ? Math.min(
+                        window.innerWidth - 328,
+                        Math.max(8, titleRef.current.getBoundingClientRect().left +
+                          titleRef.current.getBoundingClientRect().width / 2 - 160)
+                      )
                     : 16,
                 }}
               >
@@ -586,44 +599,79 @@ export default function EditionView({
             />
             Newspaper view
           </label>
-          {namedSections.length > 0 && (
+          {(namedSections.length > 0 || defaultSection) && (
             <button
               onClick={() => {
-                if (collapsedSections.size === namedSections.length) {
+                const totalSections = namedSections.length + (defaultSection ? 1 : 0)
+                if (effectiveCollapsed.size === totalSections) {
+                  setAllSectionsCollapsed(false)
                   setCollapsedSections(new Set())
                 } else {
-                  setCollapsedSections(new Set(namedSections.map(s => s.code)))
+                  setAllSectionsCollapsed(true)
+                  setCollapsedSections(new Set(['0', ...namedSections.map(s => s.code)]))
                 }
               }}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              {collapsedSections.size === namedSections.length ? 'Open sections' : 'Close sections'}
+              {effectiveCollapsed.size === namedSections.length + (defaultSection ? 1 : 0) ? 'Open sections' : 'Close sections'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Default section (always expanded, no header) */}
-      {defaultSection && defaultSection.posts.map(post => {
-        const viewedPost = getPostWithViewed(post)
-        return (
-          <div key={getPostUniqueId(post)} data-post-uri={post.post.uri} data-post-id={getPostUniqueId(post)}>
-            <PostCard
-              post={viewedPost}
-              showCounter={true}
-              onReply={onReply}
-              onRepost={onRepost}
-              onQuotePost={onQuotePost}
-              onLike={onLike}
-              onBookmark={onBookmark}
-              onDeletePost={onDeletePost}
-              onPinPost={onPinPost}
-              newspaperView={newspaperView}
-              editionFont={editionFont}
-            />
+      {/* Default section date/time header */}
+      {defaultSection && defaultSection.posts.length > 0 ? (
+        <div>
+          <div
+            onClick={() => toggleSection('0')}
+            className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+          >
+            <span className="text-gray-400 dark:text-gray-500 text-base">
+              {effectiveCollapsed.has('0') ? '▶' : '▼'}
+            </span>
+            <div className="flex-1 flex items-center gap-2">
+              <span className="h-px flex-1 bg-gray-300 dark:bg-gray-600" />
+              <span className={`text-lg font-normal text-gray-500 dark:text-gray-400 tracking-wide ${editionFont === 'sans-serif' ? 'font-newspaper-sans' : 'font-serif'}`}>
+                {edition.editionDate.toLocaleString(undefined, {
+                  hour: 'numeric', minute: '2-digit',
+                  month: 'long', day: 'numeric', year: 'numeric',
+                })}
+              </span>
+              <span className="h-px flex-1 bg-gray-300 dark:bg-gray-600" />
+            </div>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              viewed {defaultSection.posts.filter(p => viewedAtMap.has(getPostUniqueId(p))).length}/{defaultSection.posts.length}
+            </span>
           </div>
-        )
-      })}
+          {!effectiveCollapsed.has('0') && defaultSection.posts.map(post => {
+            const viewedPost = getPostWithViewed(post)
+            return (
+              <div key={getPostUniqueId(post)} data-post-uri={post.post.uri} data-post-id={getPostUniqueId(post)}>
+                <PostCard
+                  post={viewedPost}
+                  showCounter={true}
+                  onReply={onReply}
+                  onRepost={onRepost}
+                  onQuotePost={onQuotePost}
+                  onLike={onLike}
+                  onBookmark={onBookmark}
+                  onDeletePost={onDeletePost}
+                  onPinPost={onPinPost}
+                  newspaperView={newspaperView}
+                  editionFont={editionFont}
+                />
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className={`text-center px-4 py-3 text-lg font-normal text-gray-500 dark:text-gray-400 tracking-wide border-t border-gray-200 dark:border-gray-700 ${editionFont === 'sans-serif' ? 'font-newspaper-sans' : 'font-serif'}`}>
+          {edition.editionDate.toLocaleString(undefined, {
+            hour: 'numeric', minute: '2-digit',
+            month: 'long', day: 'numeric', year: 'numeric',
+          })}
+        </div>
+      )}
 
       {/* Named sections */}
       {namedSections.map(section => (
@@ -634,7 +682,7 @@ export default function EditionView({
             className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
           >
             <span className="text-blue-600 dark:text-blue-400 text-base">
-              {collapsedSections.has(section.code) ? '▶' : '▼'}
+              {effectiveCollapsed.has(section.code) ? '▶' : '▼'}
             </span>
             <div className="flex-1 flex items-center gap-2">
               <span className="h-px flex-1 bg-blue-400 dark:bg-blue-500" />
@@ -649,7 +697,7 @@ export default function EditionView({
           </div>
 
           {/* Section posts */}
-          {!collapsedSections.has(section.code) && section.posts.map(post => {
+          {!effectiveCollapsed.has(section.code) && section.posts.map(post => {
             const viewedPost = getPostWithViewed(post)
             return (
               <div key={getPostUniqueId(post)} data-post-uri={post.post.uri} data-post-id={getPostUniqueId(post)}>

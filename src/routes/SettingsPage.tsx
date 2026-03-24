@@ -841,7 +841,7 @@ Use this only if the app is not working correctly. This cannot be undone.`}
       <div className="card space-y-4">
         <h2 className="text-lg font-semibold">About</h2>
         <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-          <p>Skylimit – A curating Bluesky client (alpha version)</p>
+          <p>Skylimit – A curating Bluesky client</p>
           <p>Version {version}</p>
           <p>
             Built with Vite, React, TypeScript, and Tailwind CSS
@@ -1279,6 +1279,22 @@ Use this only if the app is not working correctly. This cannot be undone.`}
                   </select>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Length of curation intervals. Default: 2 hours. Must be a factor of 24 (1-12). Changing this affects statistics calculations.
+                  </p>
+                </div>
+
+                <h3 className="text-lg font-semibold mb-4 mt-6">Performance</h3>
+                <div className="mb-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.prefetchNotifications ?? true}
+                      onChange={(e) => updateSetting('prefetchNotifications', e.target.checked)}
+                      className="w-5 h-5"
+                    />
+                    <span>Prefetch notifications</span>
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-8">
+                    Background fetch notifications for quick page load.
                   </p>
                 </div>
 

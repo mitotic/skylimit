@@ -37,7 +37,7 @@ import {
 import {
   tryCreateEdition,
 } from './skylimitEditionAssembly'
-import { getParsedEditions, EDITION_PRE_OFFSET_MS, TAIL_EDITION_NUMBER } from './skylimitEditions'
+import { getParsedEditions, EDITION_PRE_OFFSET_MS, TAIL_EDITION_NUMBER, getEditionLayoutVersion } from './skylimitEditions'
 import { isEditionInRegistry } from './editionRegistry'
 import log from '../utils/logger'
 
@@ -1146,6 +1146,7 @@ export async function transferSecondaryToPrimary(
           username: editorBy?.handle || syntheticPost.post.author.handle,
           accountDid: editorBy?.did || syntheticPost.post.author.did,
           orig_username: syntheticPost.post.author.handle,
+          avatarUrl: syntheticPost.post.author.avatar,
           repostUri: syntheticPost.post.uri,
           tags: [],
           repostCount: syntheticPost.post.repostCount ?? 0,
@@ -1155,6 +1156,7 @@ export async function transferSecondaryToPrimary(
           curation_status: settings.showEditionsInFeed ? 'edition_publish_show' : 'edition_publish_drop',
           curation_msg: syntheticPost.curation?.curation_msg,
           edition_status: 'synthetic',
+          edition_layout_version: getEditionLayoutVersion(),
           postNumber: null,
           curationNumber: settings.showEditionsInFeed ? null : (syntheticPost.curation?.curationNumber ?? null),
         }

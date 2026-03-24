@@ -302,6 +302,7 @@ export interface PostSummary {
   postTimestamp: number         // Numeric timestamp for IndexedDB indexing (timestamp.getTime())
   postEngagement?: number       // Additive engagement levels (powers of 10), see ENGAGEMENT_* constants
   orig_username?: string
+  avatarUrl?: string            // Post author's avatar URL (for reconstruction when feed_cache is evicted)
   post_type?: PostType
   curation_status?: CurationStatus
   curation_msg?: string
@@ -316,6 +317,7 @@ export interface PostSummary {
   edition_tag?: string          // Edition pattern tag (e.g., "1.a.00b")
   matching_pattern?: string     // Matched pattern string (e.g., "@user*: #tech") for debugging
   edition_status?: string       // "hold" | "orphaned" | "synthetic" | "published:<editionKey>"
+  edition_layout_version?: number // Layout version when this synthetic summary was created
   // View tracking
   viewedAt?: number             // Client time timestamp (ms via clientNow()) when the post was first viewed in the viewport
 }
@@ -418,6 +420,7 @@ export interface SkylimitSettings {
   newspaperView?: boolean // Use newspaper view for periodic editions, default false
   editionFont?: 'serif' | 'sans-serif' // Font family for edition layout display, default 'serif'
   popAmp?: number // Popularity amplifier: 1-5, default 1 (disabled)
+  prefetchNotifications?: boolean // Prefetch notifications in background for instant page load, default true
 }
 
 /**

@@ -65,7 +65,6 @@ export default function Layout({ children }: LayoutProps) {
                   className={`h-11 w-11 object-contain ${clickToBlueSky ? 'border-2 border-blue-500 rounded-full' : ''}`}
                 />
               </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Alpha version</span>
             </div>
             <div className="flex justify-end min-w-0 flex-shrink">
               {session && <FeedSelector />}

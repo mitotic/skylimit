@@ -330,6 +330,7 @@ export function createPostSummary(post: AppBskyFeedDefs.FeedViewPost, feedReceiv
     timestamp,
     postTimestamp: timestamp.getTime(),
     postEngagement,
+    avatarUrl: post.post.author.avatar,
     postText,
     quotedText,
     quoted_username,

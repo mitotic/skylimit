@@ -80,7 +80,7 @@ export default function LoginPage() {
               Skylimit
             </a>
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">A curating <a href="https://bsky.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Bluesky</a> client (alpha version)</p>
+          <p className="text-gray-600 dark:text-gray-400">A curating <a href="https://bsky.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Bluesky</a> client</p>
           {getNonStandardServerName() && (
             <p className="text-orange-500 dark:text-orange-400 text-sm mt-1 font-medium">
               Server: {getNonStandardServerName()}
