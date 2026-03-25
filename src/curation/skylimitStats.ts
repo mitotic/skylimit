@@ -571,7 +571,7 @@ async function accumulateStatusCounts(
   _myUsername: string,
   didToUsername: Record<string, string>,
   initialLookbackActive: boolean,
-  popAmp: number
+  _popAmp: number
 ): Promise<number> {
   let accumulated = 0
 
@@ -703,7 +703,7 @@ function computeUserProbabilities(
   minFolloweeDayCount: number,
   editionPostCounts: Record<string, number>,
   editionHoldCounts: Record<string, number>,
-  popAmp: number,
+  _popAmp: number,
   effectiveDayTotal: number
 ): [GlobalStats, UserFilter] {
   // Use complete intervals for day total if available, fallback to all processed intervals
