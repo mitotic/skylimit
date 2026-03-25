@@ -543,6 +543,7 @@ function computeIntervalStats(
       inReplyToUri: summary.inReplyToUri,
       engaged: Math.floor(Math.log10(summary.postEngagement || ENGAGEMENT_NONE)),
       curation_status: summary.curation_status,  // Needed for repost_drop check
+      likeCount: summary.likeCount,
     }
 
     // Track oldest and newest timestamps
@@ -669,7 +670,7 @@ async function accumulateStatusCounts(
     }
 
     // Popularity binning for regular posts
-    if (popAmp > 1 && isRegularPost && summaryInfo.likeCount !== undefined) {
+    if (isRegularPost && summaryInfo.likeCount !== undefined) {
       if (!accum.popBins) accum.popBins = new Array(POP_BIN_COUNT).fill(0)
       const popIndex = getPopIndex(summaryInfo.likeCount)
       const cappedPop = Math.min(popIndex, Math.pow(10, POP_LOG_MAX) - 1)
@@ -805,7 +806,7 @@ function computeUserProbabilities(
 
     // Compute medianPop for popularity weighting
     // Use popTotal (sum of bin counts) — only posts with likeCount defined are binned
-    if (popAmp <= 1 || !accum.popBins) {
+    if (!accum.popBins) {
       userEntry.medianPop = 0
     } else {
       const popTotal = accum.popBins.reduce((sum, c) => sum + c, 0)

@@ -32,20 +32,22 @@ The application has two main aspects:
 
 ```
 src/
-├── api/                # AT Protocol API wrappers
+├── api/                # AT Protocol API wrappers (9 files)
 │   ├── atproto-client.ts   # Agent creation, login, service URL
 │   ├── feed.ts             # Home feed, author feed, threads, engagement lists
 │   ├── posts.ts            # Like, repost, reply, bookmark, compose
 │   ├── profile.ts          # User profile fetching
 │   ├── search.ts           # User search
 │   ├── social.ts           # Follow/unfollow, followers/following lists
-│   └── notifications.ts    # Notification fetching
+│   ├── notifications.ts    # Notification fetching
+│   ├── chat.ts             # Direct messaging conversations and messages
+│   └── notificationLoader.ts # Notification loading pipeline (used by prefetch)
 │
 ├── auth/               # Authentication and session management
 │   ├── SessionContext.tsx   # React context: agent, session, login/logout
 │   └── session-storage.ts  # localStorage/sessionStorage abstraction
 │
-├── components/         # Reusable UI components (31 files)
+├── components/         # Reusable UI components (45 files)
 │   ├── Layout.tsx           # Main layout: sidebar (desktop) + bottom nav (mobile)
 │   ├── Navigation.tsx       # Nav menu with theme toggle
 │   ├── PostCard.tsx         # Primary post rendering with curation metadata
@@ -54,6 +56,13 @@ src/
 │   ├── CurationInitModal.tsx  # First-use curation setup guide
 │   ├── Compose.tsx          # Post/reply/quote composition
 │   ├── VideoPlayer.tsx      # HLS video playback
+│   ├── EditionView.tsx      # Edition display with navigation and collapsible sections
+│   ├── EditionLayoutEditor.tsx # Visual editor for edition layouts
+│   ├── BugReportModal.tsx   # Bug report with console logs and DM submission
+│   ├── ReleaseBanner.tsx    # Version update notification banner
+│   ├── HelpMessage.tsx      # Formatted help text with glossary
+│   ├── DormantOverlay.tsx   # Multi-tab blocking overlay
+│   ├── FeedSelector.tsx     # Feed switcher
 │   ├── AcceleratedClock.tsx # Skyspeed test server clock display
 │   └── ...                  # Avatar, Button, Modal, Spinner, Toast, etc.
 │
@@ -61,14 +70,20 @@ src/
 │   ├── ThemeContext.tsx      # Dark/light mode (localStorage-persisted)
 │   └── RateLimitContext.tsx  # API rate limit tracking
 │
-├── curation/           # Skylimit curation system (16 modules)
+├── curation/           # Skylimit curation system (25 modules)
 │   ├── types.ts             # Core types: SkylimitSettings, CurationStatus, etc.
 │   ├── skylimitFilter.ts    # Per-post curation decisions
 │   ├── skylimitStats.ts     # Statistics computation and probability calculation
-│   ├── skylimitFeedCache.ts # IndexedDB feed cache (displayed posts)
+│   ├── skylimitFeedCache.ts # High-level feed cache API
+│   ├── feedCacheCore.ts     # IndexedDB CRUD operations, metadata, pagination
+│   ├── feedCacheFetch.ts    # API fetch orchestration and curation bridge
 │   ├── skylimitCache.ts     # IndexedDB cache for summaries, follows, stats
 │   ├── skylimitStore.ts     # Settings persistence (load/save/defaults)
 │   ├── skylimitGeneral.ts   # Utilities: unique IDs, timestamps, hashtags
+│   ├── skylimitEditions.ts  # Edition core logic
+│   ├── skylimitEditionAssembly.ts # Assembles held posts into synthetic editions
+│   ├── skylimitEditionMatcher.ts  # Matches posts to edition layout patterns
+│   ├── editionRegistry.ts   # Lightweight edition index (localStorage)
 │   ├── skylimitTimeline.ts  # Edition digest insertion
 │   ├── skylimitNumbering.ts # Post counter numbering (resets daily)
 │   ├── skylimitRecurate.ts  # Re-curate posts when stats change
@@ -76,10 +91,29 @@ src/
 │   ├── skylimitStatsWorker.ts # Background stats computation
 │   ├── skylimitCleanup.ts   # Cache cleanup and pruning
 │   ├── skylimitCounter.ts   # Post counting utilities
-│   ├── pagedUpdates.ts      # Paged feed update logic
-│   └── parentPostCache.ts   # Reply context parent post caching
+│   ├── skylimitUnviewedTracker.ts # Tracks viewed/unviewed posts since midnight
+│   ├── pagedUpdates.ts      # Paged feed update logic with multi-fetch probing
+│   ├── parentPostCache.ts   # Reply context parent post caching
+│   ├── localCacheSearch.ts  # Search cached summaries without API calls
+│   └── curationDataTransfer.ts # Export/import curation data for cross-device sync
 │
-├── routes/             # Page components (8 pages)
+├── hooks/              # Custom React hooks (8 files)
+│   ├── useFeedPipeline.ts   # Central feed state management and curation pipeline
+│   ├── useScrollManagement.ts # Scroll position tracking and restoration
+│   ├── useViewTracking.ts   # IntersectionObserver-based view event tracking
+│   ├── usePostInteractions.ts # Like, repost, reply action handlers
+│   ├── useFeedTransition.ts # Feed switching transitions
+│   ├── usePullToRefresh.ts  # Mobile pull-to-refresh gesture
+│   ├── useSwipeNavigation.ts # Horizontal swipe gesture for navigation
+│   └── homePageTypes.ts     # HomePage type definitions
+│
+├── prefetch/           # Prefetch caching
+│   └── prefetchCache.ts     # Singleton cache for prefetched notifications
+│
+├── data/               # Static data
+│   └── helpGlossary.ts     # Centralized glossary of curation terms
+│
+├── routes/             # Page components (11 pages)
 │   ├── HomePage.tsx         # Main feed with curation, pagination, editions
 │   ├── LoginPage.tsx        # App password authentication
 │   ├── ProfilePage.tsx      # User profiles with posts/replies/likes tabs
@@ -87,16 +121,26 @@ src/
 │   ├── NotificationsPage.tsx # Aggregated notifications
 │   ├── SearchPage.tsx       # User search
 │   ├── SavedPage.tsx        # Bookmarked posts
+│   ├── FeedPage.tsx         # Custom feed viewer with state persistence
+│   ├── ChatPage.tsx         # Direct messaging conversations
+│   ├── FollowListPage.tsx   # Followers/following lists
 │   └── SettingsPage.tsx     # Three-tab settings (basic/curation/following)
 │
-├── utils/              # Utilities
+├── utils/              # Utilities (14 files)
 │   ├── hmac.ts              # HMAC-SHA256 for deterministic randomization
 │   ├── clientClock.ts       # Client-side clock (supports Skyspeed acceleration)
 │   ├── rateLimit.ts         # Rate limit detection and handling
 │   ├── rateLimitState.ts    # Shared rate limit state
 │   ├── requestThrottle.ts   # Request throttling
 │   ├── notificationAggregation.ts # Notification grouping logic
-│   └── og-image.ts          # OpenGraph image extraction
+│   ├── og-image.ts          # OpenGraph image extraction
+│   ├── tabGuard.ts          # Single-tab enforcement via localStorage heartbeat
+│   ├── logger.ts            # Logging utilities
+│   ├── logBuffer.ts         # Log buffer for bug reports
+│   ├── beginnerMode.ts      # Beginner-friendly UI flag
+│   ├── readOnlyMode.ts      # Read-only mode flag (disables write operations)
+│   ├── versionCheck.ts      # Detects app version updates
+│   └── timezoneUtils.ts     # Timezone handling
 │
 ├── types/              # Shared TypeScript type definitions
 │   └── index.ts
@@ -104,7 +148,7 @@ src/
 ├── styles/
 │   └── index.css        # Tailwind imports and global styles
 │
-├── App.tsx             # Routing and layout (RateLimitProvider wraps routes)
+├── App.tsx             # Routing, tab guard, and layout (RateLimitProvider wraps routes)
 └── main.tsx            # Entry point: URL param handling, reset logic, React mount
 ```
 
@@ -133,7 +177,12 @@ React.StrictMode
 | `/search` | SearchPage | Protected | User search |
 | `/saved` | SavedPage | Protected | Bookmarked posts |
 | `/profile/:actor` | ProfilePage | Protected | User profiles |
+| `/profile/:actor/followers` | FollowListPage | Protected | Followers list |
+| `/profile/:actor/following` | FollowListPage | Protected | Following list |
 | `/post/:uri` | ThreadPage | Protected | Thread view |
+| `/feed/:feedUri` | FeedPage | Protected | Custom feed viewer |
+| `/chat` | ChatPage | Protected | Direct message conversations |
+| `/chat/:convoId` | ChatPage | Protected | Specific DM conversation |
 | `/settings` | SettingsPage | Protected | App and curation settings |
 
 Unauthenticated users are redirected to `/login`. Authenticated users accessing `/login` are redirected to `/`.
@@ -151,7 +200,7 @@ Unauthenticated users are redirected to `/login`. Authenticated users accessing 
 
 ### Feed Loading and Curation Pipeline
 
-This is the most complex data flow in the application, managed by `HomePage.tsx`:
+This is the most complex data flow in the application, orchestrated by `useFeedPipeline.ts` (with `HomePage.tsx` as the container component):
 
 1. **Mount**: HomePage checks if a valid cached feed exists in IndexedDB
 2. **Cache hit**: Restore displayed feed from `skylimitFeedCache` (if within idle interval)
@@ -181,15 +230,23 @@ When new posts arrive while the user is browsing:
 
 Provides `agent` (BskyAgent instance), `session` (user info), `isLoading`, `login()`, and `logout()` via React context. Handles Skyspeed test server detection, config change prompts, and auto-login from URL parameters.
 
-### Feed State (`HomePage.tsx`)
+### Feed State (`useFeedPipeline` hook)
 
-The most complex state in the application. Key state variables:
+The most complex state in the application, managed by `src/hooks/useFeedPipeline.ts` with `HomePage.tsx` as the container. Key state variables:
 
 - `feed` / `previousPageFeed`: Currently displayed posts and previous page
 - `newestDisplayedPostTimestamp` / `oldestDisplayedPostTimestamp`: Feed boundary tracking
 - `showNewPostsButton` / `newPostsCount`: New posts notification
 - `activeTab`: Curated vs. editions view
 - Multiple refs for scroll state preservation across navigation
+
+Other feed-related hooks:
+- `useScrollManagement`: Scroll position tracking and restoration
+- `useViewTracking`: IntersectionObserver-based view event tracking
+- `usePostInteractions`: Like, repost, reply action handlers
+- `useFeedTransition`: Feed switching animations
+- `usePullToRefresh`: Mobile pull-to-refresh gesture
+- `useSwipeNavigation`: Horizontal swipe for page navigation
 
 ### Curation State (IndexedDB)
 
@@ -205,7 +262,7 @@ The `skylimit_db` IndexedDB database contains these object stores:
 
 ## Curation System Architecture
 
-The 16 modules in `src/curation/` implement the [Skylimit Protocol](SkylimitProtocol.md):
+The 25 modules in `src/curation/` implement the [Skylimit Protocol](SkylimitProtocol.md):
 
 ### Core Algorithm
 
@@ -217,15 +274,31 @@ The 16 modules in `src/curation/` implement the [Skylimit Protocol](SkylimitProt
 
 ### Storage
 
-- **`skylimitFeedCache.ts`**: IndexedDB operations for the displayed feed cache. Handles pagination boundaries, scroll state preservation, and feed pruning.
+- **`skylimitFeedCache.ts`**: High-level feed cache API.
+
+- **`feedCacheCore.ts`**: IndexedDB CRUD operations, metadata, pagination, and lookback management for cached feed posts.
+
+- **`feedCacheFetch.ts`**: API fetch orchestration and curation bridge. Handles fetch iteration, secondary-to-primary cache transfer, and edition creation during gaps.
 
 - **`skylimitCache.ts`**: IndexedDB operations for follows, filter (stats/probabilities), post summaries, and editions.
 
 - **`skylimitStore.ts`**: Settings persistence with defaults and validation.
 
+- **`curationDataTransfer.ts`**: Export/import system for syncing curation data (settings, edition layout, amplification factors) across devices.
+
+### Edition System
+
+- **`skylimitEditions.ts`**: Edition core logic.
+
+- **`skylimitEditionAssembly.ts`**: Assembles held posts into synthetic edition posts by creating fake editor users who "repost" curated collections.
+
+- **`skylimitEditionMatcher.ts`**: Matches posts to edition layout patterns (handles, hashtags, topics).
+
+- **`editionRegistry.ts`**: Lightweight localStorage-based index of all created editions. Enables fast navigation in the Editions tab without scanning the post cache.
+
 ### Pipeline
 
-- **`pagedUpdates.ts`**: Logic for paged feed updates including page size calculation accounting for curation filtering variability.
+- **`pagedUpdates.ts`**: Logic for paged feed updates including page size calculation accounting for curation filtering variability, with multi-fetch probing.
 
 - **`skylimitTimeline.ts`**: Inserts edition digest posts at scheduled times.
 
@@ -245,7 +318,11 @@ The 16 modules in `src/curation/` implement the [Skylimit Protocol](SkylimitProt
 
 - **`skylimitCounter.ts`**: Post counting utilities.
 
+- **`skylimitUnviewedTracker.ts`**: Tracks posts viewed/unviewed since midnight for unread count display.
+
 - **`parentPostCache.ts`**: Caches parent posts for reply context display.
+
+- **`localCacheSearch.ts`**: Searches cached post summaries by handle, name, and text patterns without API calls.
 
 
 ## Build and Deployment

@@ -642,7 +642,7 @@ export default function SkylimitStatistics() {
     shown: 'Shown',
     probability: 'Show probability',
     engaged: 'Enggd',
-    popI: '', // no glossary entry, inline title
+    popI: 'Popularity index',
     name: '', // inline help text, not from glossary
   }
 
@@ -902,7 +902,7 @@ export default function SkylimitStatistics() {
                 {debugMode && renderSortableHeader('Shown', 'shown', { italic: true })}
                 {renderSortableHeader('Prob', 'probability')}
                 {renderSortableHeader('Enggd', 'engaged')}
-                {debugMode && renderSortableHeader('Pop-I', 'popI', { italic: true })}
+                {debugMode && renderSortableHeader('PopI', 'popI', { italic: true })}
                 {renderSortableHeader('Name', 'name')}
               </tr>
             </thead>

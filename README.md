@@ -7,7 +7,7 @@
 - [Running it yourself](#running-it-yourself)
 - [Documentation](#documentation)
 
-Skylimit is an installable web application that implements a client-side [curation protocol](docs/SkylimitProtocol.md) for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed.
+Skylimit is an installable web application that implements a client-side [curation protocol](docs/SkylimitProtocol.md) for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed. In addition to curation, Skylimit includes direct messaging, custom feed browsing, edition digests (newspaper-style post compilations), and mobile-friendly features like pull-to-refresh and swipe navigation.
 
 The goal of many social media platforms is to maximize your screen time. Skylimit takes a different approach: the goal is to *limit*, not maximize, your social media interaction time. The Skylimit algorithm tries to statistically optimize your social interaction within a specified limit. It attempts to answer the following question: *If I decide to limit myself to viewing, say, 500 posts per day (on average), what is the best way to manage my Following Feed?*
 

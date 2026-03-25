@@ -303,6 +303,7 @@ export interface PostSummary {
   postEngagement?: number       // Additive engagement levels (powers of 10), see ENGAGEMENT_* constants
   orig_username?: string
   avatarUrl?: string            // Post author's avatar URL (for reconstruction when feed_cache is evicted)
+  displayName?: string          // Display name of the post author (or editor user for synthetic reposts)
   post_type?: PostType
   curation_status?: CurationStatus
   curation_msg?: string
@@ -549,5 +550,7 @@ export interface EditionRegistryEntry {
   endPostTimestamp: number        // latest synthetic postTimestamp in this edition
   oldestOriginalTimestamp: number // oldest original post's postTimestamp (for expiry)
   viewedAt?: number               // clock time when edition was first rendered in editions tab
+  postCount?: number              // total synthetic posts in edition
+  unreadCount?: number            // unread posts (initially = postCount, decremented as posts are viewed)
 }
 

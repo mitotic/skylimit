@@ -852,6 +852,7 @@ export interface TransferResult {
   newestTransferredTimestamp: number | null
   oldestTransferredTimestamp: number | null
   editionsAssembled: number
+  remainingEntries: SecondaryEntry[]
 }
 
 /**
@@ -943,7 +944,7 @@ export async function transferSecondaryToPrimary(
 
   if (secondaryEntries.length === 0) {
     log.debug(topic, ` No entries to transfer`)
-    return { postsTransferred: 0, displayableCount: 0, newestTransferredTimestamp: null, oldestTransferredTimestamp: null, editionsAssembled: 0 }
+    return { postsTransferred: 0, displayableCount: 0, newestTransferredTimestamp: null, oldestTransferredTimestamp: null, editionsAssembled: 0, remainingEntries: [] }
   }
 
   // Filter out entries with invalid timestamps, then sort oldest-first for correct numbering order
@@ -959,7 +960,7 @@ export async function transferSecondaryToPrimary(
 
   if (sorted.length === 0) {
     log.debug(topic, ` No valid entries to transfer (all had invalid timestamps)`)
-    return { postsTransferred: 0, displayableCount: 0, newestTransferredTimestamp: null, oldestTransferredTimestamp: null, editionsAssembled: 0 }
+    return { postsTransferred: 0, displayableCount: 0, newestTransferredTimestamp: null, oldestTransferredTimestamp: null, editionsAssembled: 0, remainingEntries: [] }
   }
 
   // Initialize numbering from the day of the oldest entry (unless skipping)
@@ -1046,6 +1047,7 @@ export async function transferSecondaryToPrimary(
 
   const now = clientNow()
   const STALENESS_MS = 48 * 60 * 60 * 1000
+  const syntheticToInject: typeof sorted[0][] = []
 
   for (const pending of pendingEditions) {
     // Check lead time window (now >= editionTimestamp - 15 min)
@@ -1127,9 +1129,8 @@ export async function transferSecondaryToPrimary(
     )
 
     if (syntheticPosts.length > 0) {
-      // Insert synthetic posts into sorted array at the gap position
-      // They get timestamps starting at gapBeforeTs + 1ms with 1ms spacing
-      const syntheticEntries: typeof sorted[0][] = []
+      // Collect synthetic entries for injection into sorted array after edition loop.
+      // They get timestamps starting at gapBeforeTs + 1ms with 1ms spacing.
       for (const syntheticPost of syntheticPosts) {
         const insertTimestamp = getFeedViewPostTimestamp(syntheticPost).getTime()
         const syntheticUniqueId = getPostUniqueId(syntheticPost).replace(SL_REPOST_PREFIX, SL_EDITION_PREFIX)
@@ -1147,6 +1148,7 @@ export async function transferSecondaryToPrimary(
           accountDid: editorBy?.did || syntheticPost.post.author.did,
           orig_username: syntheticPost.post.author.handle,
           avatarUrl: syntheticPost.post.author.avatar,
+          displayName: editorBy?.displayName,
           repostUri: syntheticPost.post.uri,
           tags: [],
           repostCount: syntheticPost.post.repostCount ?? 0,
@@ -1161,7 +1163,7 @@ export async function transferSecondaryToPrimary(
           curationNumber: settings.showEditionsInFeed ? null : (syntheticPost.curation?.curationNumber ?? null),
         }
 
-        syntheticEntries.push({
+        syntheticToInject.push({
           entry: {
             uniqueId: syntheticUniqueId,
             post: syntheticPost,
@@ -1175,21 +1177,32 @@ export async function transferSecondaryToPrimary(
         })
       }
 
-      // Insert synthetic entries into sorted array at gapIdx position
-      sorted.splice(gapIdx, 0, ...syntheticEntries)
       editionsAssembled++
-
-      log.verbose('Transfer/edition', `Injected ${syntheticPosts.length} synthetic edition posts`)
+      log.verbose('Transfer/edition', `Collected ${syntheticPosts.length} synthetic edition posts for transfer`)
     }
 
   }
 
+  // Inject all synthetic entries into sorted array and re-sort so they transfer
+  // in timestamp order alongside regular posts (originals before synthetics).
+  if (syntheticToInject.length > 0) {
+    sorted.push(...syntheticToInject)
+    sorted.sort((a, b) => a.entry.postTimestamp - b.entry.postTimestamp)
+    log.verbose('Transfer/edition', `Injected ${syntheticToInject.length} total synthetic entries into sorted array`)
+  }
+
   // --- Main transfer loop ---
+  let transferredCount = 0
   for (const { entry, summary } of sorted) {
-    // In 'page' mode, stop when we have enough displayable posts
-    if (transferMode === 'page' && displayableCount >= pageLength) {
+    // In 'page' mode, stop when we have enough displayable posts.
+    // Never break in the middle of a synthetic edition sequence — synthetics are
+    // clustered together (contiguous 1ms timestamps in a gap ≥1s wide), so once
+    // the page cutoff is reached, finish processing any remaining synthetics
+    // before breaking to ensure editions are transferred atomically.
+    if (transferMode === 'page' && displayableCount >= pageLength && summary.edition_status !== 'synthetic') {
       break
     }
+    transferredCount++
 
     if (skipNumbering) {
       // Leave numbers unassigned — they'll be assigned later by assignAllNumbers
@@ -1254,33 +1267,13 @@ export async function transferSecondaryToPrimary(
   // Batch save summaries (numbers assigned inline unless skipNumbering)
   await savePostSummariesForce(summariesToSave)
 
-  // Ensure all synthetic edition entries are persisted even if skipped by page cutoff.
-  // In page mode, the loop breaks after enough displayable posts, but synthetic edition
-  // posts inserted at a gap deeper in the array may not have been processed yet.
-  if (transferMode === 'page') {
-    const savedIds = new Set(summariesToSave.map(s => s.uniqueId))
-    const unsavedSynthetics = sorted.filter(item =>
-      item.summary.edition_status === 'synthetic' && !savedIds.has(item.summary.uniqueId)
-    )
-    if (unsavedSynthetics.length > 0) {
-      await savePostSummariesForce(unsavedSynthetics.map(s => s.summary))
-      await savePostsToPrimaryCache(unsavedSynthetics.map(({ entry }) => ({
-        uniqueId: entry.uniqueId,
-        post: entry.post,
-        timestamp: entry.timestamp,
-        postTimestamp: entry.postTimestamp,
-        interval: entry.interval,
-        cachedAt: entry.cachedAt,
-        reposterDid: entry.reposterDid,
-      })))
-      log.debug(topic, ` Saved ${unsavedSynthetics.length} synthetic edition entries skipped by page cutoff`)
-    }
-  }
-
   // Update primary cache metadata
   await updateFeedCacheNewestPostTimestamp()
 
-  log.debug(topic, ` Complete: ${savedCount} saved to primary (${primaryEntries.length} processed), ${displayableCount} displayable${skipNumbering ? ', numbering deferred' : ''}`)
+  // Compute remaining entries not transferred (includes any synthetic entries beyond page cutoff)
+  const remaining = sorted.slice(transferredCount)
+
+  log.debug(topic, ` Complete: ${savedCount} saved to primary (${primaryEntries.length} processed), ${displayableCount} displayable, ${remaining.length} remaining${skipNumbering ? ', numbering deferred' : ''}`)
 
   return {
     postsTransferred: savedCount,
@@ -1288,6 +1281,7 @@ export async function transferSecondaryToPrimary(
     newestTransferredTimestamp,
     oldestTransferredTimestamp,
     editionsAssembled,
+    remainingEntries: remaining,
   }
 }
 

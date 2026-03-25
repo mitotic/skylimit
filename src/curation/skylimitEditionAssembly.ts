@@ -11,12 +11,12 @@
 
 import { AppBskyFeedDefs } from '@atproto/api'
 import type { BskyAgent } from '@atproto/api'
-import { CurationFeedViewPost, EditionRegistryEntry, FeedCacheEntry, PostSummary } from './types'
-import { getPostSummariesInRange } from './skylimitCache'
+import { CurationFeedViewPost, EditionRegistryEntry, FeedCacheEntry, PostSummary, SecondaryEntry } from './types'
+import { getPostSummariesInRange, getNewestSummaryTimestamp, savePostsToPrimaryCache, savePostSummariesForce } from './skylimitCache'
 import { getEditorHandle, getEditorUser, editorUserToProfileView, getParsedEditions, editionLetter, HEAD_EDITION_NUMBER, TAIL_EDITION_NUMBER, getEditionLayoutVersion } from './skylimitEditions'
 import { clientNow } from '../utils/clientClock'
 import { getSettings } from './skylimitStore'
-import { getEditionRegistry } from './editionRegistry'
+import { getEditionRegistry, removeEditionFromRegistry } from './editionRegistry'
 import log from '../utils/logger'
 
 export async function getEditionLookbackMs(): Promise<number> {
@@ -214,6 +214,8 @@ export async function tryCreateEdition(
       startPostTimestamp: insertStartTime,
       endPostTimestamp: insertStartTime + syntheticPosts.length - 1,
       oldestOriginalTimestamp: Math.min(...heldPosts.map(s => s.postTimestamp)),
+      postCount: syntheticPosts.length,
+      unreadCount: syntheticPosts.length,
     })
     log.debug('Edition', `Saved registry entry: ${editionKey} (${editionName}), ${syntheticPosts.length} posts`)
   }
@@ -274,11 +276,95 @@ function parseEditorHandle(handle: string): ParsedEditorHandle | null {
 }
 
 /**
- * Get the list of all editions from the registry (lightweight, no post loading).
- * Used by EditionView for navigation.
+ * Get the list of editions from the registry whose synthetic posts have been
+ * fully transferred to the summaries cache. Editions whose newest synthetic
+ * post (endPostTimestamp) exceeds the newest summary timestamp are excluded,
+ * ensuring consistency between the primary feed cache and summaries cache.
  */
-export function getEditionList(): EditionRegistryEntry[] {
-  return getEditionRegistry()
+export async function getEditionList(): Promise<EditionRegistryEntry[]> {
+  const entries = getEditionRegistry()
+  const newestSummaryTs = await getNewestSummaryTimestamp()
+  if (newestSummaryTs === null) return entries  // empty cache — show all
+  return entries.filter(e => e.endPostTimestamp <= newestSummaryTs)
+}
+
+/**
+ * Revert original posts that were marked as 'published:KEY' back to 'hold' status
+ * when their edition is being discarded. This allows them to be picked up by a
+ * future edition assembly.
+ */
+async function revertPublishedPosts(entry: EditionRegistryEntry): Promise<void> {
+  const publishedTag = `published:${entry.editionKey}`
+  // Original posts are older than the synthetic timestamps — search from
+  // oldestOriginalTimestamp up to the start of the synthetic range
+  const summaries = await getPostSummariesInRange(
+    entry.oldestOriginalTimestamp,
+    entry.startPostTimestamp - 1
+  )
+  const publishedSummaries = summaries.filter(s => s.edition_status === publishedTag)
+  if (publishedSummaries.length === 0) return
+
+  for (const summary of publishedSummaries) {
+    summary.edition_status = 'hold'
+  }
+  await savePostSummariesForce(publishedSummaries)
+  log.info('Edition', `Reverted ${publishedSummaries.length} held posts from '${publishedTag}' back to 'hold' ` +
+    `for discarded edition ${entry.editionKey} (${entry.editionName})`)
+}
+
+/**
+ * Clean up orphaned edition registry entries before discarding a retained secondary cache.
+ * Compares each registry entry's synthetic post timestamps against the newest summary
+ * timestamp to determine what has been transferred:
+ * - Fully transferred (endPostTimestamp <= newestSummaryTs): no action
+ * - Fully untransferred (startPostTimestamp > newestSummaryTs): remove from registry
+ * - Partially transferred (fallback): transfer remaining synthetics from retained entries
+ */
+export async function cleanupOrphanedEditions(
+  retainedEntries: SecondaryEntry[] | null
+): Promise<void> {
+  const newestSummaryTs = await getNewestSummaryTimestamp()
+  if (newestSummaryTs === null) return  // empty summaries cache — nothing to clean
+
+  const registry = getEditionRegistry()
+  for (const entry of registry) {
+    if (entry.endPostTimestamp <= newestSummaryTs) {
+      // Fully transferred — no action needed
+      continue
+    }
+
+    if (entry.startPostTimestamp > newestSummaryTs) {
+      // Fully untransferred — remove orphaned registry entry and revert held posts
+      await revertPublishedPosts(entry)
+      removeEditionFromRegistry(entry.editionKey)
+      log.warn('Edition', `Removed orphaned edition ${entry.editionKey} (${entry.editionName}): ` +
+        `synthetic range ${new Date(entry.startPostTimestamp).toLocaleString()}–${new Date(entry.endPostTimestamp).toLocaleString()} ` +
+        `is entirely beyond newest summary ${new Date(newestSummaryTs).toLocaleString()}`)
+      continue
+    }
+
+    // Partially transferred — transfer remaining synthetics from retained cache
+    if (!retainedEntries || retainedEntries.length === 0) {
+      log.warn('Edition', `Partially transferred edition ${entry.editionKey} (${entry.editionName}) ` +
+        `but no retained entries available to complete transfer`)
+      continue
+    }
+
+    const untransferredSynthetics = retainedEntries.filter(e =>
+      e.summary.edition_status === 'synthetic' &&
+      e.entry.postTimestamp > newestSummaryTs &&
+      e.entry.postTimestamp <= entry.endPostTimestamp
+    )
+
+    if (untransferredSynthetics.length > 0) {
+      const primaryEntries = untransferredSynthetics.map(e => e.entry)
+      const summaries = untransferredSynthetics.map(e => e.summary)
+      await savePostsToPrimaryCache(primaryEntries)
+      await savePostSummariesForce(summaries)
+      log.info('Edition', `Transferred ${untransferredSynthetics.length} remaining synthetics for ` +
+        `partially transferred edition ${entry.editionKey} (${entry.editionName})`)
+    }
+  }
 }
 
 /**
@@ -459,21 +545,22 @@ export async function getEditionContent(registryEntry: EditionRegistryEntry, age
     ))
   }
 
-  // Build fallback section names from editor displayName when layout version mismatches
+  // Build fallback section names from summary displayName when layout version mismatches
   if (!layoutVersionMatch) {
     fallbackSectionNames = new Map()
     for (const [groupKey, summaries] of sectionMap) {
       if (groupKey === '0') continue  // default section has no name
       const firstSummary = summaries[0]
-      const syntheticPost = syntheticPostMap.get(firstSummary.uniqueId)
-      if (syntheticPost?.reason) {
-        const displayName = (syntheticPost.reason as any).by?.displayName || ''
+      const displayName = firstSummary.displayName
+      if (displayName) {
+        // displayName present: extract section name after colon
+        // No colon means default section — intentionally no name
         const colonIdx = displayName.indexOf(': ')
         if (colonIdx >= 0) {
           fallbackSectionNames.set(groupKey, displayName.substring(colonIdx + 2))
         }
-        // No colon means default section — no name needed
       }
+      // displayName absent (old summaries): entry stays missing → "Section head_a" fallback
     }
   }
 
@@ -585,7 +672,7 @@ export async function getEditionContent(registryEntry: EditionRegistryEntry, age
  * @returns Array of editions ordered chronologically (newest first)
  */
 export async function getAssembledEditions(agent: BskyAgent | null): Promise<EditionDisplayData[]> {
-  const entries = getEditionList()
+  const entries = await getEditionList()
   if (entries.length === 0) return []
 
   const editions: EditionDisplayData[] = []

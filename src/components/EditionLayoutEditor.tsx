@@ -222,10 +222,8 @@ export function generateLayoutText(state: EditorState): string {
         : `# ${edition.time}`
       lines.push(timeName)
       const editionLines = generateEditionPatternLines(edition)
-      // Blank line after edition header if first content is not a section header
-      if (editionLines.length > 0 && !editionLines[0].startsWith('##')) {
-        lines.push('')
-      }
+      // Always add blank line after edition header for readability
+      lines.push('')
       lines.push(...editionLines)
     }
   }

@@ -1,20 +1,24 @@
 # Skylimit User Guide
 
-Version 0.1
+Version 0.9 (Beta)
 
 - [Getting Started](#getting-started)
 - [Browsing Your Feed](#browsing-your-feed)
 - [Interacting with Posts](#interacting-with-posts)
 - [Viewing Threads](#viewing-threads)
 - [Profiles and Following](#profiles-and-following)
+- [Custom Feeds](#custom-feeds)
 - [Notifications](#notifications)
 - [Search](#search)
 - [Saved Posts](#saved-posts)
+- [Chat / Direct Messages](#chat--direct-messages)
+- [Mobile Features](#mobile-features)
 - [Settings Overview](#settings-overview)
 - [Skylimit Curation](#skylimit-curation)
+- [Help and Troubleshooting](#help-and-troubleshooting)
 - [Caveats](#caveats)
 
-Skylimit is a working *proof-of-concept* software that implements a curation algorithm for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed. The [README](https://github.com/mitotic/skylimit#readme) provides background on the motivations behind Skylimit. The [protocol document](SkylimitProtocol.md) describes the algorithm in detail.
+Skylimit is a *beta* web application that implements a curation algorithm for the [Bluesky](https://bsky.app/) microblogging network. It provides fine-grained control on how you consume your Bluesky Following Feed. The [README](https://github.com/mitotic/skylimit#readme) provides background on the motivations behind Skylimit. The [protocol document](SkylimitProtocol.md) describes the algorithm in detail.
 
 
 ## Getting Started
@@ -147,7 +151,7 @@ Click on a user's avatar or handle to view their profile. The profile page shows
 - **Replies**: Posts and replies
 - **Likes**: Posts the user has liked
 
-You can follow or unfollow a user directly from their profile page.
+You can follow or unfollow a user directly from their profile page. Click on the follower or following count to view the full followers or following list, with the ability to follow/unfollow users directly from the list.
 
 <p align="center">
 <img src="images/ProfilePage.png"
@@ -155,6 +159,11 @@ You can follow or unfollow a user directly from their profile page.
 <br>
 <em>User profile page</em>
 </p>
+
+
+## Custom Feeds
+
+Skylimit supports browsing custom Bluesky feeds (also known as "feeds" or "algorithms") in addition to your Following Feed. When you navigate to a custom feed, posts are displayed with infinite scroll pagination and you can interact with them the same way as in the home feed (like, repost, reply, quote, bookmark). Your scroll position within a feed is preserved when navigating away and back.
 
 
 ## Notifications
@@ -202,6 +211,28 @@ The Saved page shows all posts you have bookmarked. You can remove bookmarks fro
 <br>
 <em>Saved/bookmarked posts</em>
 </p>
+
+
+## Chat / Direct Messages
+
+Skylimit includes a direct messaging interface for Bluesky conversations. The Chat page displays your conversation list and allows you to read and send messages. You can navigate to a specific conversation or start from the conversation list.
+
+*Note*: Direct messaging requires that your Bluesky app password has chat permissions. If you see a permission error, you may need to create a new app password with the appropriate permissions enabled.
+
+
+## Mobile Features
+
+### Pull-to-Refresh
+
+On mobile devices, you can pull down from the top of the feed to refresh and load new posts. A visual indicator shows your pull progress before the refresh triggers.
+
+### Swipe Navigation
+
+Horizontal swipe gestures are supported for page navigation: swipe left for the next page and swipe right for the previous page. The gesture only triggers when horizontal movement dominates vertical movement, so it does not interfere with normal scrolling.
+
+### Single-Tab Enforcement
+
+Skylimit enforces single-tab usage to prevent data conflicts. If you open Skylimit in a second browser tab, the first tab will show a dormant overlay. You can click to reclaim the active tab at any time.
 
 
 ## Settings Overview
@@ -438,12 +469,35 @@ The following reset options are available:
 If the app fails to load due to a database error (e.g., an IndexedDB version conflict after testing a different version of the app), you can add `?clobber=1` to the URL (e.g., `http://localhost:5181/?clobber=1` or `https://skylimit.dev/?clobber=1`) to delete all site data and start fresh. This is equivalent to using the browser's "Clear site data" option in DevTools, and is especially useful on mobile devices where DevTools are not available.
 
 
+## Help and Troubleshooting
+
+### Version Updates
+
+When a new version of Skylimit is deployed, a release banner appears at the top of the page with a summary of changes. You can dismiss the banner and it will not reappear for that version.
+
+### Bug Reports
+
+Skylimit includes a built-in bug report feature that collects console logs and allows you to describe the issue. Bug reports are sent via direct message to the developer. You can preview the report contents before sending.
+
+### Help Glossary
+
+Skylimit provides contextual help text explaining curation concepts (Skylimit Number, amplification factor, editions, etc.) through the help system accessible from the interface.
+
+### Read-Only Mode
+
+Read-only mode disables all write operations (posting, liking, reposting, following) across the app. This is useful when browsing on a shared device or when you want to prevent accidental interactions.
+
+### Data Transfer
+
+You can export your curation settings (amplification factors, edition layouts, preferences) and import them on another device or browser using the data transfer feature in the Curation settings tab.
+
+
 ## Caveats
 
 - If a change in settings doesn't seem to have any visible effect, *reloading* the web page may help.
 
 - To update to the latest version of Skylimit on the website, a hard refresh of the browser is usually needed (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on Mac).
 
-- Remember that Skylimit is alpha-quality software that is being actively developed and may occasionally break. However, it will not damage your Bluesky account because Skylimit stores all its curation data in the web browser. You can continue to access Bluesky using any other web client or phone app with no interference from Skylimit.
+- Remember that Skylimit is beta-quality software that is being actively developed and may occasionally break. However, it will not damage your Bluesky account because Skylimit stores all its curation data in the web browser. You can continue to access Bluesky using any other web client or phone app with no interference from Skylimit.
 
-- All curation data is local to each browser. If you switch browsers, Skylimit will compute statistics independently in the new browser.
+- All curation data is local to each browser. If you switch browsers, Skylimit will compute statistics independently in the new browser. You can use the data transfer feature to sync settings across browsers.

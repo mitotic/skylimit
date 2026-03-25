@@ -28,6 +28,9 @@ export const helpGlossary: Record<string, string> = {
   'Enggd':
     'Metric of your engagement with posts from the user (daily average). Post engagement is measured as follows: 0-viewed; 1-clicked; 2-liked; 3-bookmarked; 4-reposted; 5-replied.',
 
+  'Popularity index':
+    'Median value of the count of likes.',
+
   'Edited':
     'Number of posts that are displayed in Periodic Editions (instead of the home feed).',
 

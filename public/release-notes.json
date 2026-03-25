@@ -1,4 +1,4 @@
 {
-  "version": "0.7.0-beta.2",
-  "message": "Beta branding, several Edition UI fixes"
+  "version": "0.7.0-beta.3",
+  "message": "Edition reliability fixes: orphaned edition cleanup, stuck editions tab, like/bookmark/repost in Edition View, synthetic entry transfer improvements"
 }

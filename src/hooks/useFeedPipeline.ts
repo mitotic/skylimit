@@ -8,6 +8,7 @@ import { initDB, closeDB, getFilter, getPostSummary, isPostSummariesCacheEmpty, 
 import { getSettings } from '../curation/skylimitStore'
 import { probeForNewPosts, FETCH_BATCH_SIZE, getPagedUpdatesSettings } from '../curation/pagedUpdates'
 import { flushExpiredParentPosts } from '../curation/parentPostCache'
+import { cleanupOrphanedEditions } from '../curation/skylimitEditionAssembly'
 import { scheduleStatsComputation, computeStatsInBackground } from '../curation/skylimitStatsWorker'
 import { recomputeCurationDecisions } from '../curation/skylimitRecurate'
 import { GlobalStats, CurationFeedViewPost, SecondaryEntry, getIntervalHoursSync, isStatusShow } from '../curation/types'
@@ -1979,6 +1980,14 @@ export function useFeedPipeline({
           const displayableCount = probeResult.retentionDisplayableCount
 
           if (displayableCount >= postsNeededForPage) {
+            // Clean up any synthetic edition entries in existing retained cache
+            // before overwriting — prevents orphaned registry entries when a
+            // page-mode transfer left synthetics in the retained cache
+            const existingCache = getRetainedSecondaryCache()
+            if (existingCache && existingCache.entries.some(e => e.summary.edition_status === 'synthetic')) {
+              await cleanupOrphanedEditions(existingCache.entries)
+            }
+
             // RETAIN probe results in secondary cache
             setRetainedSecondaryCache({
               entries: probeResult.nonOverlappingEntries,

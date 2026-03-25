@@ -62,6 +62,17 @@ export function getNewestRegistryEntry(): EditionRegistryEntry | null {
   return entries.length > 0 ? entries[0] : null
 }
 
+/** Remove a single edition from the registry by its key. Returns true if found and removed. */
+export function removeEditionFromRegistry(editionKey: string): boolean {
+  const entries = getEditionRegistry()
+  const filtered = entries.filter(e => e.editionKey !== editionKey)
+  if (filtered.length < entries.length) {
+    localStorage.setItem(EDITION_REGISTRY_KEY, JSON.stringify(filtered))
+    return true
+  }
+  return false
+}
+
 /** Check if an edition with the given key already exists in the registry. */
 export function isEditionInRegistry(editionKey: string): boolean {
   return getEditionRegistry().some(e => e.editionKey === editionKey)
@@ -81,6 +92,16 @@ export function markEditionViewed(editionKey: string, timestamp: number): void {
 export function isNewestEditionUnviewed(): boolean {
   const newest = getNewestRegistryEntry()
   return newest != null && !newest.viewedAt
+}
+
+/** Update the unreadCount for an edition in the registry. */
+export function updateEditionUnreadCount(editionKey: string, unreadCount: number): void {
+  const entries = getEditionRegistry()
+  const entry = entries.find(e => e.editionKey === editionKey)
+  if (entry) {
+    entry.unreadCount = unreadCount
+    localStorage.setItem(EDITION_REGISTRY_KEY, JSON.stringify(entries))
+  }
 }
 
 /** Clear the entire registry (for reset/debug). */

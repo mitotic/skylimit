@@ -31,6 +31,7 @@ import { version } from '../../package.json'
 import { clientNow, clientDate } from '../utils/clientClock'
 import { HomeTab, HOME_TAB_STATE_KEY, getFeedStateKey, getScrollStateKey, DEFAULT_MAX_DISPLAYED_FEED_SIZE, FAST_FORWARD_CHUNK_SIZE, SavedFeedState, findLowestVisiblePostTimestamp } from '../hooks/homePageTypes'
 import { isNewestEditionUnviewed } from '../curation/editionRegistry'
+import { cleanupOrphanedEditions } from '../curation/skylimitEditionAssembly'
 import { isReadOnlyMode } from '../utils/readOnlyMode'
 import { usePostInteractions } from '../hooks/usePostInteractions'
 import { useScrollManagement } from '../hooks/useScrollManagement'
@@ -363,6 +364,7 @@ export default function HomePage() {
             const cacheAge = clientNow() - cached.fetchedAt
             const fullPageWaitMinutes = settings?.pagedUpdatesFullPageWaitMinutes ?? PAGED_UPDATES_DEFAULTS.fullPageWaitMinutes
             log.debug('New Posts', `SINGLE PAGE: Cache invalid (age=${Math.round(cacheAge / 1000)}s, fullPageWait=${fullPageWaitMinutes}min)`)
+            await cleanupOrphanedEditions(cached.entries)
             clearRetainedSecondaryCache()
           }
           // Fetch from server
@@ -396,11 +398,9 @@ export default function HomePage() {
           `${transferResult.displayableCount} displayable${usedCache ? ' (from cache)' : ''}`)
         log.info('Page Load', `[${buttonName}] source=${usedCache ? 'retained cache' : 'fetch'}, raw=${allEntries.length}, displayed=${transferResult.displayableCount}/${transferResult.postsTransferred} transferred`)
 
-        // Compute remaining entries not transferred.
-        // transferSecondaryToPrimary sorts oldest-first and processes sequentially,
-        // so transferred entries are the oldest postsTransferred entries.
-        const sorted = [...allEntries].sort((a, b) => a.entry.postTimestamp - b.entry.postTimestamp)
-        const remainingEntries = sorted.slice(transferResult.postsTransferred)
+        // Use remaining entries returned by transferSecondaryToPrimary, which includes
+        // any synthetic edition entries that weren't transferred due to page cutoff.
+        const remainingEntries = transferResult.remainingEntries
 
         // Count remaining displayable posts beyond what was transferred
         const totalDisplayable = allEntries.filter(
@@ -420,6 +420,12 @@ export default function HomePage() {
             partPagePostCount: 0,
           })
           log.debug('New Posts', `SINGLE PAGE: Retained ${remainingEntries.length} entries in secondary cache (${remaining} displayable)`)
+        } else if (remainingEntries.length > 0 && remainingEntries.some(e => e.summary.edition_status === 'synthetic')) {
+          // Not enough displayable posts for a full page, but remaining entries
+          // contain synthetic edition posts. Clean up any orphaned editions by
+          // transferring only the synthetic entries to primary/summaries cache.
+          await cleanupOrphanedEditions(remainingEntries)
+          clearRetainedSecondaryCache()
         } else {
           clearRetainedSecondaryCache()
         }
@@ -576,7 +582,10 @@ export default function HomePage() {
           setSyncProgress(80)
         } else {
           // Clear stale/insufficient cache
-          if (retainedCached) clearRetainedSecondaryCache()
+          if (retainedCached) {
+            await cleanupOrphanedEditions(retainedCached.entries)
+            clearRetainedSecondaryCache()
+          }
 
           const fetchResult = await fetchToSecondaryFeedCache(
             agent,
@@ -1010,6 +1019,14 @@ export default function HomePage() {
       setShowEditionsInFeed(!!s?.showEditionsInFeed)
     })
   }, [])
+
+  // When editions are shown inline in feed, force tab to 'curated'
+  // (the tab bar is hidden, so user can't switch manually)
+  useEffect(() => {
+    if (showEditionsInFeed && activeTab === 'editions') {
+      setActiveTab('curated')
+    }
+  }, [showEditionsInFeed])
 
   // Periodically check for new unviewed editions (for the tab dot indicator)
   useEffect(() => {
@@ -1518,12 +1535,11 @@ export default function HomePage() {
         <EditionView
           agent={agent}
           onReply={handleReply}
-          onRepost={handleRepost}
           onQuotePost={handleQuotePost}
-          onLike={handleLike}
-          onBookmark={handleBookmark}
-          onDeletePost={handleDeletePost}
-          onPinPost={handlePinPost}
+          addToast={addToast}
+          forceProbeRef={forceProbeRef}
+          setForceProbeTrigger={setForceProbeTrigger}
+          myUsername={session?.handle}
           onEditionViewed={() => setHasNewEdition(isNewestEditionUnviewed())}
           targetEditionKey={targetEditionKeyRef.current}
           onTargetConsumed={() => { targetEditionKeyRef.current = null }}

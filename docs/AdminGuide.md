@@ -12,19 +12,18 @@ Skylimit is deployed to [skylimit.dev](https://skylimit.dev) via the [skylimit](
 The deployment workflow:
 
 1. Develop and test in the Websky repository
-2. Run the copy script (with user confirmation):
-   ```bash
-   cd Websky
-   ./copy-to-skylimit.sh
-   ```
-   This copies all source files to `skylimit/`, excluding `.git`, root-level `.md` files, `node_modules`, `dist`, credentials, and the `.claude` directory. The `docs/` directory *is* copied.
-3. In the `skylimit` directory:
-   ```bash
-   cd ../skylimit
-   npm install
-   npm run build
-   ```
-4. Commit and push to GitHub to deploy.
+2. Use the `/sky-push` Claude Code skill to copy files from Websky to the skylimit repository, commit, and push. This runs `copy-to-skylimit.sh` which copies all source files to `skylimit/`, excluding `.git`, root-level `.md` files, `node_modules`, `dist`, credentials, the `.claude` directory, and the `local-archive` directory. The `docs/` directory *is* copied.
+3. Use the `/sky-release` Claude Code skill to create a GitHub Release on the skylimit repository. **Deployment is triggered by creating a Release, not by every push.**
+
+The copy script can also be run manually:
+```bash
+cd Websky
+./copy-to-skylimit.sh
+```
+
+### Cloudflare Pages (Testing)
+
+A test deployment is available at [skytest.dev](https://skytest.dev) via Cloudflare Pages. Use the `/cloud-deploy` Claude Code skill to deploy the current Websky build to Cloudflare Pages.
 
 ### Other Static Hosting
 
