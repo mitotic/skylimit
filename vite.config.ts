@@ -61,7 +61,9 @@ function bugReportPlugin(): Plugin {
             }
 
             const origin = req.headers.origin || req.headers.referer || ''
+            console.log(`[bug-report] origin=${req.headers.origin} referer=${req.headers.referer} resolved=${origin}`)
             const mode = detectMode(origin as string)
+            console.log(`[bug-report] mode=${mode}`)
 
             if (mode === 'reject') {
               res.statusCode = 403
@@ -112,7 +114,7 @@ function bugReportPlugin(): Plugin {
               console.log(`\n[bug-report] Bug report received, Claude is processing...`)
               console.log(`[bug-report] Response will be saved to ${responseFile}`)
 
-              const child = spawn('claude', ['-p'], {
+              const child = spawn('claude', ['--permission-mode', 'acceptEdits', '--allowedTools', 'Read', '-p'], {
                 cwd: projectDir,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 detached: true,
