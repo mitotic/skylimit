@@ -963,11 +963,15 @@ export default function ThreadPage() {
     const fromParents = !found ? parentChain.find(p => p.uri === replyToUri) : undefined
     const post = (found || fromParents || thread.post) as AppBskyFeedDefs.PostView
     const record = post.record as Record<string, unknown> | undefined
+    // Use actual thread root: extract from anchor post's record, or fall back to anchor post itself
+    const anchorRecord = thread.post.record as { reply?: { root?: { uri: string; cid: string } } }
+    const actualRootUri = anchorRecord?.reply?.root?.uri || thread.post.uri
+    const actualRootCid = anchorRecord?.reply?.root?.cid || thread.post.cid
     return {
       uri: replyToUri,
       cid: post.cid,
-      rootUri: thread.post.uri,
-      rootCid: thread.post.cid,
+      rootUri: actualRootUri,
+      rootCid: actualRootCid,
       text: record?.text as string | undefined,
       facets: record?.facets as AppBskyRichtextFacet.Main[] | undefined,
       authorName: post.author.displayName,

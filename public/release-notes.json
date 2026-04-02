@@ -1,4 +1,4 @@
 {
-  "version": "0.7.0-beta.4",
-  "message": "- Add blog link to About page\n- Add PopI (popularity index) stats: glossary entry, likeCount propagation, medianPop always computed, column header rename\n- Add permission flags and debug logging to bug report\n- Cloudflare deployment fixes"
+  "version": "0.7.0-beta.5",
+  "message": "- Replace About Skylimit button with Intro post, Intro talk, and Github README links on login page\n- Fix missing rootUri/rootCid in reply records from HomePage and ThreadPage"
 }

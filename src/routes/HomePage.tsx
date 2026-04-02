@@ -1591,6 +1591,8 @@ export default function HomePage() {
           return {
             uri: replyToUri,
             cid: parentPost.cid,
+            rootUri: record?.reply?.root?.uri,
+            rootCid: record?.reply?.root?.cid,
             text: record?.text,
             facets: record?.facets,
             authorName: parentPost.author.displayName,

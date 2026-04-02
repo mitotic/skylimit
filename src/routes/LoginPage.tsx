@@ -204,14 +204,30 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="text-center mt-6">
+        <div className="flex flex-wrap justify-center gap-3 mt-6">
+          <a
+            href="https://blog.skylimit.dev/p/skylimit-a-better-way-to-read-social"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+          >
+            Intro post
+          </a>
+          <a
+            href="https://atmosphereconf.org/event/xX5yRJr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+          >
+            Intro talk
+          </a>
           <a
             href="https://github.com/mitotic/skylimit#readme"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
           >
-            About Skylimit
+            Github README
           </a>
         </div>
       </div>
