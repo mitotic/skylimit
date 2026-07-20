@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Copy Websky to skylimit-alpha, excluding documentation and git history
-# Run from: /Users/sarava/ClaudeLocal/Websky
+# Run from: /Users/sarava/ClaudeCode/ClaudeLocal/Websky
 
-SOURCE_DIR="/Users/sarava/ClaudeLocal/Websky"
-TARGET_DIR="/Users/sarava/ClaudeLocal/skylimit-alpha"
+SOURCE_DIR="/Users/sarava/ClaudeCode/ClaudeLocal/Websky"
+TARGET_DIR="/Users/sarava/ClaudeCode/ClaudeLocal/skylimit-alpha"
 
 # Create target directory
 mkdir -p "$TARGET_DIR"
